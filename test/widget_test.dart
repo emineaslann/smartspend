@@ -6,6 +6,7 @@ import 'package:smartspend/models/transaction.dart';
 import 'package:smartspend/providers/transaction_provider.dart';
 import 'package:smartspend/screens/welcome_screen.dart';
 import 'package:smartspend/screens/auth_screen.dart';
+import 'package:smartspend/screens/add_transaction_screen.dart';
 import 'package:smartspend/theme/app_theme.dart';
 
 void main() {
@@ -210,6 +211,33 @@ void main() {
       final sadecGider = provider.filterTransactions(type: 'expense');
       expect(sadecGelir.every((t) => t.isIncome), true);
       expect(sadecGider.every((t) => t.isExpense), true);
+    });
+  });
+
+  group('İşlem Ekleme Ekranı Testleri', () {
+    testWidgets('TC-18: Tutar alanı görünüyor mu',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+          uygulamaOlustur(const AddTransactionScreen()));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Tutar'), findsOneWidget);
+    });
+
+    testWidgets('TC-19: Gider butonu görünüyor mu',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+          uygulamaOlustur(const AddTransactionScreen()));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Gider'), findsOneWidget);
+    });
+
+    testWidgets('TC-20: İşlem ekleme formu görünüyor mu',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+          uygulamaOlustur(const AddTransactionScreen()));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(Form), findsOneWidget);
+      expect(find.text('Tutar'), findsOneWidget);
     });
   });
 }

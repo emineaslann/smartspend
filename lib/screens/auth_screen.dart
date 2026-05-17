@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_theme.dart';
 import 'dashboard_screen.dart';
 
@@ -15,12 +16,10 @@ class _AuthScreenState extends State<AuthScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Giriş formu için controller'lar
   final _loginFormKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // Kayıt formu için controller'lar
   final _registerFormKey = GlobalKey<FormState>();
   final _adSoyadController = TextEditingController();
   final _regEmailController = TextEditingController();
@@ -54,14 +53,105 @@ class _AuthScreenState extends State<AuthScreen>
     super.dispose();
   }
 
-  // Giriş başarılı olunca dashboard'a geç
-  void _dashboardaGit() async {
+  // Şifre sıfırlama e-postası gönder
+  Future<void> _sifremiUnuttum() async {
+    if (_emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Lütfen önce e-posta adresinizi girin',
+            style: GoogleFonts.spaceGrotesk(),
+          ),
+          backgroundColor: AppTheme.gold,
+        ),
+      );
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: _emailController.text.trim(),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Şifre sıfırlama e-postası gönderildi!',
+              style: GoogleFonts.spaceGrotesk(),
+            ),
+            backgroundColor: AppTheme.income,
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String mesaj = 'Bir hata oluştu';
+      if (e.code == 'user-not-found') mesaj = 'Bu e-posta ile kayıtlı kullanıcı bulunamadı';
+      if (e.code == 'invalid-email') mesaj = 'Geçersiz e-posta adresi';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mesaj, style: GoogleFonts.spaceGrotesk()),
+          backgroundColor: AppTheme.expense,
+        ),
+      );
+    }
+  }
+
+  // Firebase ile giriş yap
+  Future<void> _girisYap() async {
+    if (!_loginFormKey.currentState!.validate()) return;
     setState(() => _yukleniyor = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() => _yukleniyor = false);
+      String mesaj = 'Giriş başarısız';
+      if (e.code == 'user-not-found') mesaj = 'Bu e-posta ile kayıtlı kullanıcı bulunamadı';
+      if (e.code == 'wrong-password') mesaj = 'Şifre yanlış';
+      if (e.code == 'invalid-email') mesaj = 'Geçersiz e-posta adresi';
+      if (e.code == 'invalid-credential') mesaj = 'E-posta veya şifre hatalı';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mesaj, style: GoogleFonts.spaceGrotesk()),
+          backgroundColor: AppTheme.expense,
+        ),
+      );
+    }
+  }
+
+  // Firebase ile kayıt ol
+  Future<void> _kayitOl() async {
+    if (!_registerFormKey.currentState!.validate()) return;
+    setState(() => _yukleniyor = true);
+    try {
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _regEmailController.text.trim(),
+        password: _regPasswordController.text.trim(),
+      );
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() => _yukleniyor = false);
+      String mesaj = 'Kayıt başarısız';
+      if (e.code == 'email-already-in-use') mesaj = 'Bu e-posta zaten kullanımda';
+      if (e.code == 'weak-password') mesaj = 'Şifre çok zayıf, en az 6 karakter girin';
+      if (e.code == 'invalid-email') mesaj = 'Geçersiz e-posta adresi';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mesaj, style: GoogleFonts.spaceGrotesk()),
+          backgroundColor: AppTheme.expense,
+        ),
       );
     }
   }
@@ -72,7 +162,6 @@ class _AuthScreenState extends State<AuthScreen>
       backgroundColor: AppTheme.background,
       body: Stack(
         children: [
-          // Arka plan dekor
           Positioned(
             top: -100,
             right: -80,
@@ -110,7 +199,6 @@ class _AuthScreenState extends State<AuthScreen>
               ],
             ),
           ),
-          // Yüklenme göstergesi
           if (_yukleniyor)
             Container(
               color: Colors.black54,
@@ -216,7 +304,6 @@ class _AuthScreenState extends State<AuthScreen>
     );
   }
 
-  // ── Giriş Formu ───────────────────────────────────────
   Widget _girisFormu() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -253,25 +340,20 @@ class _AuthScreenState extends State<AuthScreen>
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
-              child: Text(
-                'Şifremi Unuttum?',
-                style: GoogleFonts.spaceGrotesk(
-                  color: AppTheme.primary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+              child: GestureDetector(
+                onTap: _sifremiUnuttum,
+                child: Text(
+                  'Şifremi Unuttum?',
+                  style: GoogleFonts.spaceGrotesk(
+                    color: AppTheme.primary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 32),
-            _anaButon('Giriş Yap', () {
-              if (_loginFormKey.currentState!.validate()) {
-                _dashboardaGit();
-              }
-            }),
-            const SizedBox(height: 24),
-            _ayirici(),
-            const SizedBox(height: 24),
-            _googleButon(),
+            _anaButon('Giriş Yap', _girisYap),
             const SizedBox(height: 24),
           ],
         ),
@@ -279,7 +361,6 @@ class _AuthScreenState extends State<AuthScreen>
     );
   }
 
-  // ── Kayıt Formu ───────────────────────────────────────
   Widget _kayitFormu() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -338,14 +419,11 @@ class _AuthScreenState extends State<AuthScreen>
                 );
               },
               dogrulama: (v) => v != _regPasswordController.text
-                  ? 'Şifreler eşleşmiyor' : null,
+                  ? 'Şifreler eşleşmiyor'
+                  : null,
             ),
             const SizedBox(height: 32),
-            _anaButon('Hesap Oluştur', () {
-              if (_registerFormKey.currentState!.validate()) {
-                _dashboardaGit();
-              }
-            }),
+            _anaButon('Hesap Oluştur', _kayitOl),
             const SizedBox(height: 24),
           ],
         ),
@@ -353,7 +431,6 @@ class _AuthScreenState extends State<AuthScreen>
     );
   }
 
-  // ── Yardımcı Widget'lar ───────────────────────────────
   Widget _etiket(String metin) {
     return Text(
       metin,
@@ -452,7 +529,17 @@ class _AuthScreenState extends State<AuthScreen>
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        onPressed: _dashboardaGit,
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Google ile giriş yakında eklenecek',
+                style: GoogleFonts.spaceGrotesk(),
+              ),
+              backgroundColor: AppTheme.primary,
+            ),
+          );
+        },
         icon: const Text(
           'G',
           style: TextStyle(

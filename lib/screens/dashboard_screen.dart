@@ -9,6 +9,7 @@ import '../models/transaction.dart';
 import 'transactions_screen.dart';
 import 'add_transaction_screen.dart';
 import 'statistics_screen.dart';
+import 'profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -25,6 +26,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     TransactionsScreen(),
     AddTransactionScreen(),
     StatisticsScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -91,7 +93,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final aktif = _secilenIndex == index;
     return GestureDetector(
       onTap: () {
-        if (index == 4) return;
         setState(() => _secilenIndex = index);
       },
       child: AnimatedContainer(
