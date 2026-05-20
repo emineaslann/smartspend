@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_theme.dart';
 import '../providers/transaction_provider.dart';
 import '../screens/welcome_screen.dart';
@@ -53,6 +54,12 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _profilKarti() {
+    final user = FirebaseAuth.instance.currentUser;
+    final email = user?.email ?? 'kullanici@email.com';
+    final initials = email.isNotEmpty
+        ? email.substring(0, 2).toUpperCase()
+        : 'EA';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -67,7 +74,6 @@ class ProfileScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Avatar
           Container(
             width: 80,
             height: 80,
@@ -84,10 +90,10 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Center(
+            child: Center(
               child: Text(
-                'EA',
-                style: TextStyle(
+                initials,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
@@ -106,7 +112,7 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'emineaslann@gmail.com',
+            email,
             style: GoogleFonts.spaceGrotesk(
               color: AppTheme.textSecondary,
               fontSize: 14,
@@ -114,19 +120,14 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 6,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
               color: AppTheme.primary.withOpacity(0.15),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppTheme.primary.withOpacity(0.3),
-              ),
+              border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
             ),
             child: Text(
-              'SmartSpend Kullanıcısı',
+              'SmartSpend Kullanicisi',
               style: GoogleFonts.spaceGrotesk(
                 color: AppTheme.primary,
                 fontSize: 12,
@@ -200,11 +201,16 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _menuListesi(BuildContext context) {
     final menuler = [
-      (Icons.person_outline_rounded, 'Hesap Bilgileri', AppTheme.primary),
-      (Icons.notifications_outlined, 'Bildirimler', AppTheme.gold),
-      (Icons.security_outlined, 'Gizlilik ve Güvenlik', AppTheme.income),
-      (Icons.help_outline_rounded, 'Yardım ve Destek', AppTheme.textSecondary),
-      (Icons.info_outline_rounded, 'Hakkında', AppTheme.textSecondary),
+      (Icons.person_outline_rounded, 'Hesap Bilgileri', AppTheme.primary,
+          () => _hesapBilgileriDialog(context)),
+      (Icons.notifications_outlined, 'Bildirimler', AppTheme.gold,
+          () => _yakindaDialog(context, 'Bildirimler')),
+      (Icons.security_outlined, 'Gizlilik ve Güvenlik', AppTheme.income,
+          () => _yakindaDialog(context, 'Gizlilik ve Güvenlik')),
+      (Icons.help_outline_rounded, 'Yardım ve Destek', AppTheme.textSecondary,
+          () => _yakindaDialog(context, 'Yardım ve Destek')),
+      (Icons.info_outline_rounded, 'Hakkında', AppTheme.textSecondary,
+          () => _hakkindaDialog(context)),
     ];
 
     return Container(
@@ -219,6 +225,7 @@ class ProfileScreen extends StatelessWidget {
           return Column(
             children: [
               ListTile(
+                onTap: e.value.$4,
                 leading: Container(
                   width: 36,
                   height: 36,
@@ -241,7 +248,6 @@ class ProfileScreen extends StatelessWidget {
                   color: AppTheme.textMuted,
                   size: 20,
                 ),
-                onTap: () {},
               ),
               if (!sonMu)
                 const Divider(
@@ -253,6 +259,205 @@ class ProfileScreen extends StatelessWidget {
             ],
           );
         }).toList(),
+      ),
+    );
+  }
+
+  void _hesapBilgileriDialog(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppTheme.surfaceElevated,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text(
+          'Hesap Bilgileri',
+          style: GoogleFonts.spaceGrotesk(
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _bilgiSatiri(Icons.email_outlined, 'E-posta',
+                user?.email ?? '-'),
+            const SizedBox(height: 16),
+            _bilgiSatiri(Icons.calendar_today_rounded, 'Kayit Tarihi',
+                user?.metadata.creationTime != null
+                    ? '${user!.metadata.creationTime!.day}/${user.metadata.creationTime!.month}/${user.metadata.creationTime!.year}'
+                    : '-'),
+            const SizedBox(height: 16),
+            _bilgiSatiri(Icons.verified_outlined, 'Hesap Durumu',
+                'Aktif'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Kapat',
+              style: GoogleFonts.spaceGrotesk(color: AppTheme.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bilgiSatiri(IconData ikon, String baslik, String deger) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(ikon, color: AppTheme.primary, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              baslik,
+              style: GoogleFonts.spaceGrotesk(
+                color: AppTheme.textSecondary,
+                fontSize: 11,
+              ),
+            ),
+            Text(
+              deger,
+              style: GoogleFonts.spaceGrotesk(
+                color: AppTheme.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _hakkindaDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppTheme.surfaceElevated,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text(
+          'Hakkında',
+          style: GoogleFonts.spaceGrotesk(
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppTheme.primary, AppTheme.primaryDark],
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Center(
+                child: Text(
+                  '₺',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'SmartSpend',
+              style: GoogleFonts.spaceGrotesk(
+                color: AppTheme.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Versiyon 1.0.0',
+              style: GoogleFonts.spaceGrotesk(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Gelir ve giderlerinizi akillica yonetin. '
+              'SmartSpend ile finansal hedeflerinize ulasin.',
+              style: GoogleFonts.spaceGrotesk(
+                color: AppTheme.textSecondary,
+                fontSize: 12,
+                height: 1.6,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.code_rounded,
+                      color: AppTheme.primary, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Flutter ile gelistirildi',
+                    style: GoogleFonts.spaceGrotesk(
+                      color: AppTheme.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Kapat',
+              style: GoogleFonts.spaceGrotesk(color: AppTheme.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _yakindaDialog(BuildContext context, String baslik) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '$baslik yakinda eklenecek!',
+          style: GoogleFonts.spaceGrotesk(),
+        ),
+        backgroundColor: AppTheme.primary,
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -270,14 +475,14 @@ class ProfileScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               title: Text(
-                'Çıkış Yap',
+                'Cikis Yap',
                 style: GoogleFonts.spaceGrotesk(
                   color: AppTheme.textPrimary,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               content: Text(
-                'Hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+                'Hesabinizdan cikis yapmak istediginize emin misiniz?',
                 style: GoogleFonts.spaceGrotesk(
                   color: AppTheme.textSecondary,
                 ),
@@ -286,21 +491,24 @@ class ProfileScreen extends StatelessWidget {
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text(
-                    'İptal',
+                    'Iptal',
                     style: GoogleFonts.spaceGrotesk(
                       color: AppTheme.textSecondary,
                     ),
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const WelcomeScreen(),
-                      ),
-                      (route) => false,
-                    );
+                  onPressed: () async {
+                    await FirebaseAuth.instance.signOut();
+                    if (context.mounted) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const WelcomeScreen(),
+                        ),
+                        (route) => false,
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.expense,
@@ -309,7 +517,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'Çıkış Yap',
+                    'Cikis Yap',
                     style: GoogleFonts.spaceGrotesk(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -322,7 +530,7 @@ class ProfileScreen extends StatelessWidget {
         },
         icon: const Icon(Icons.logout_rounded, color: AppTheme.expense),
         label: Text(
-          'Çıkış Yap',
+          'Cikis Yap',
           style: GoogleFonts.spaceGrotesk(
             color: AppTheme.expense,
             fontWeight: FontWeight.w600,
